@@ -200,7 +200,7 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
     };
 
     fetchData();
-  }, []);
+  }, [isVoting]);
 
   const getSentimentDescription = () => {
     if (!summary.todayPhase) return 'Waiting for first votes of the day...';

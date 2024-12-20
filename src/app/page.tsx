@@ -13,28 +13,30 @@ export default function Home() {
   const [, setLastVoteDate] = useState<string | null>(null);
   const [selectedPhase, setSelectedPhase] = useState('');
   const [showResults, setShowResults] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user has voted today from either localStorage or by making an API call
     const checkVoteStatus = async () => {
-      const lastVote = localStorage.getItem('lastVoteDate');
-      const today = new Date().toDateString();
+      try {
+        setIsLoading(true);
+        const lastVote = localStorage.getItem('lastVoteDate');
+        const today = new Date().toDateString();
 
-      if (lastVote === today) {
-        setHasVoted(true);
-        setLastVoteDate(lastVote);
-        setShowResults(true);
-      } else {
-        // Check if IP has voted
-        try {
+        if (lastVote === today) {
+          setHasVoted(true);
+          setLastVoteDate(lastVote);
+          setShowResults(true);
+        } else {
           const response = await fetch('/api/sentiment/check');
           const { hasVoted } = await response.json();
           if (hasVoted) {
             setShowResults(true);
           }
-        } catch (error) {
-          console.error('Failed to check vote status:', error);
         }
+      } catch (error) {
+        console.error('Failed to check vote status:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -94,6 +96,7 @@ export default function Home() {
       localStorage.setItem('lastVoteDate', today);
       setHasVoted(true);
       setLastVoteDate(today);
+      setShowResults(true);
     } catch (error) {
       alert(
         error instanceof Error
@@ -144,18 +147,25 @@ export default function Home() {
           </div>
         </div>
 
-        {!showResults ? (
+        {isLoading ? (
+          <div className="w-full h-[500px] flex items-center justify-center">
+            <div className="text-white text-lg">Loading chart...</div>
+          </div>
+        ) : !showResults ? (
           <div className="w-full space-y-6 flex justify-center flex-col">
             <LineChart onVote={handlePhaseSelect} isVoting={true} />
             {selectedPhase && (
-              <div className="text-center space-y-4 w-40 mx-auto">
-                <p className="text-white">
-                  Selected: <span className="font-bold">{selectedPhase}</span>
-                </p>
+              <div className="flex flex-col items-center gap-4">
+                <div className="bg-black/50 px-6 py-3 rounded-lg">
+                  <p className="text-white text-lg">
+                    Selected phase:{' '}
+                    <span className="font-bold">{selectedPhase}</span>
+                  </p>
+                </div>
                 <Button
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className="w-full"
+                  className="w-40 h-12 text-lg"
                 >
                   {isSubmitting ? 'Submitting...' : 'Confirm Vote'}
                 </Button>
@@ -171,7 +181,6 @@ export default function Home() {
                   value={averageSentiment}
                   className="h-4 rounded-none [&>div]:rounded-none [&>div]:bg-white [&>div]:animate-progress-stripes [&>div]:bg-[length:20px_20px] [&>div]:bg-gradient-to-r [&>div]:from-white/50 [&>div]:to-transparent"
                 />
-                <div className="text-center text-white">Loading...</div>
               </div>
             )}
           </div>

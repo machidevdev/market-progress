@@ -147,8 +147,8 @@ export default function Home() {
           <div className="text-sm dark:text-gray-400">
             <p>
               Help track the market sentiment by submitting your view on the
-              current progress. To do this, click on the chart to select your
-              sentiment and vote.
+              current progress. Vote to see today&apos;s collective market
+              psychology and vote distribution.
             </p>
           </div>
         </div>
@@ -159,6 +159,10 @@ export default function Home() {
           </div>
         ) : !showResults ? (
           <div className="w-full space-y-6 flex justify-center flex-col">
+            <p className="text-center text-orange-500 font-medium">
+              Vote to unlock today&apos;s results and see where the market
+              stands
+            </p>
             <LineChart onVote={handlePhaseSelect} isVoting={true} />
             {selectedPhase && (
               <div className="flex flex-col items-center gap-4">

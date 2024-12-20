@@ -31,11 +31,6 @@ const chartConfig = {
 
 export function LineChart() {
   const [data, setData] = React.useState(chartData);
-  const [sentiment, setSentiment] = React.useState({
-    current: 0,
-    yesterday: 0,
-    trend: 'neutral',
-  });
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -44,45 +39,11 @@ export function LineChart() {
         const sentiments: Sentiment[] = await response.json();
 
         const newData = [...chartData];
-        let totalProgress = 0;
-        let todayVotes = 0;
-        let yesterdayProgress = 0;
-        let yesterdayVotes = 0;
-
-        const today = new Date().toDateString();
-        const yesterday = new Date(Date.now() - 86400000).toDateString();
-
         sentiments.forEach((s) => {
-          const sentimentDate = new Date(s.createdAt).toDateString();
           const rangeIndex = Math.floor(s.progress / 10);
-
           if (rangeIndex >= 0 && rangeIndex < 10) {
             newData[rangeIndex].votes++;
-
-            if (sentimentDate === today) {
-              totalProgress += s.progress;
-              todayVotes++;
-            } else if (sentimentDate === yesterday) {
-              yesterdayProgress += s.progress;
-              yesterdayVotes++;
-            }
           }
-        });
-
-        const currentSentiment = todayVotes ? totalProgress / todayVotes : 0;
-        const yesterdaySentiment = yesterdayVotes
-          ? yesterdayProgress / yesterdayVotes
-          : 0;
-
-        setSentiment({
-          current: Math.round(currentSentiment),
-          yesterday: Math.round(yesterdaySentiment),
-          trend:
-            currentSentiment > yesterdaySentiment
-              ? 'positive'
-              : currentSentiment < yesterdaySentiment
-              ? 'negative'
-              : 'neutral',
         });
 
         setData(newData);
@@ -93,20 +54,6 @@ export function LineChart() {
 
     fetchData();
   }, []);
-
-  const getSentimentDescription = () => {
-    const diff = sentiment.current - sentiment.yesterday;
-    if (sentiment.trend === 'positive') {
-      return `Market sentiment is up ${Math.abs(diff)}% from yesterday (${
-        sentiment.yesterday
-      }%). Current average: ${sentiment.current}%`;
-    } else if (sentiment.trend === 'negative') {
-      return `Market sentiment is down ${Math.abs(diff)}% from yesterday (${
-        sentiment.yesterday
-      }%). Current average: ${sentiment.current}%`;
-    }
-    return `Market sentiment unchanged from yesterday (${sentiment.yesterday}%). Current average: ${sentiment.current}%`;
-  };
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', {
@@ -119,14 +66,9 @@ export function LineChart() {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2 text-center">
-        <p className="text-sm text-muted-foreground dark:text-white">
-          {formatDate(new Date())}
-        </p>
-        <p className="text-sm text-muted-foreground dark:text-white">
-          {getSentimentDescription()}
-        </p>
-      </div>
+      <p className="text-sm text-muted-foreground dark:text-white text-center">
+        {formatDate(new Date())}
+      </p>
       <ChartContainer
         config={chartConfig}
         className="h-[200px] sm:h-[300px] w-full"

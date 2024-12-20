@@ -1,101 +1,160 @@
-import Image from "next/image";
+'use client';
+
+import { Progress } from '@/components/ui/progress';
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { LineChart } from '@/components/LineChart';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [progress, setProgress] = useState(65);
+  const [averageSentiment, setAverageSentiment] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasVoted, setHasVoted] = useState(false);
+  const [, setLastVoteDate] = useState<string | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    // Check if user has voted today
+    const lastVote = localStorage.getItem('lastVoteDate');
+    const today = new Date().toDateString();
+
+    if (lastVote === today) {
+      setHasVoted(true);
+      setLastVoteDate(lastVote);
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetchAverageSentiment = async () => {
+      try {
+        const response = await fetch('/api/sentiment');
+        const sentiments = await response.json();
+
+        if (sentiments.length > 0) {
+          const total = sentiments.reduce(
+            (acc: number, curr: { progress: number }) => acc + curr.progress,
+            0
+          );
+          setAverageSentiment(Math.round(total / sentiments.length));
+        }
+      } catch (error) {
+        console.error('Failed to fetch average sentiment:', error);
+      }
+    };
+
+    fetchAverageSentiment();
+  }, [isSubmitting]);
+
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true);
+      const response = await fetch('/api/sentiment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ progress }),
+      });
+
+      if (!response.ok) throw new Error('Failed to submit');
+
+      // Save vote date to localStorage
+      const today = new Date().toDateString();
+      localStorage.setItem('lastVoteDate', today);
+      setHasVoted(true);
+      setLastVoteDate(today);
+    } catch (error) {
+      console.error('Failed to submit:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center p-4 sm:p-8 bg-black">
+      <div className="w-full max-w-md space-y-6 sm:space-y-8">
+        <div className="space-y-4">
+          <h1 className="text-2xl font-bold text-center dark:text-white">
+            Bull Market Progress
+          </h1>
+          <div className="text-sm text-center space-y-2 dark:text-gray-400">
+            <p>
+              Help track the bull market sentiment by submitting your view on
+              the current progress.
+            </p>
+            <ul className="text-xs space-y-1">
+              <li>
+                <span className="text-blue-400">0-30%:</span> Early bull market,
+                accumulation phase
+              </li>
+              <li>
+                <span className="text-green-400">30-70%:</span> Mid bull market,
+                trending phase
+              </li>
+              <li>
+                <span className="text-red-400">70-100%:</span> Late bull market,
+                distribution phase
+              </li>
+            </ul>
+            <p className="pt-2 font-medium">
+              Average market sentiment: {averageSentiment}%
+            </p>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Progress
+              value={averageSentiment}
+              className="h-4 rounded-none [&>div]:rounded-none [&>div]:bg-white [&>div]:animate-progress-stripes [&>div]:bg-[length:20px_20px] [&>div]:bg-gradient-to-r [&>div]:from-white/50 [&>div]:to-transparent"
+            />
+          </div>
+
+          <div className="space-y-2">
+            {hasVoted ? (
+              <p className="text-sm text-center text-yellow-400">
+                You have already voted today. Come back tomorrow!
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-center dark:text-gray-400">
+                  Submit your sentiment
+                </p>
+                <Slider
+                  value={[progress]}
+                  onValueChange={(value) => setProgress(value[0])}
+                  min={0}
+                  max={100}
+                  step={1}
+                  className="w-full"
+                />
+                <p className="text-sm text-center font-medium dark:text-white">
+                  {progress}%
+                </p>
+              </>
+            )}
+          </div>
+
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || hasVoted}
+            className="w-full"
+          >
+            {isSubmitting
+              ? 'Submitting...'
+              : hasVoted
+              ? 'Already Voted Today'
+              : 'Submit Your View'}
+          </Button>
+        </div>
+
+        <div className="mt-8 sm:mt-12 h-[250px] sm:h-[300px]">
+          <h2 className="text-lg sm:text-xl font-bold mb-4 text-center dark:text-white">
+            Historical Sentiment
+          </h2>
+          <LineChart />
+        </div>
+      </div>
     </div>
   );
 }

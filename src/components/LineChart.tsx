@@ -31,6 +31,7 @@ const chartConfig = {
 
 export function LineChart() {
   const [data, setData] = React.useState(chartData);
+  const [totalVotes, setTotalVotes] = React.useState(0);
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -39,13 +40,20 @@ export function LineChart() {
         const sentiments: Sentiment[] = await response.json();
 
         const newData = [...chartData];
+        const today = new Date().toDateString();
+        let todayCount = 0;
+
         sentiments.forEach((s) => {
           const rangeIndex = Math.floor(s.progress / 10);
           if (rangeIndex >= 0 && rangeIndex < 10) {
             newData[rangeIndex].votes++;
+            if (new Date(s.createdAt).toDateString() === today) {
+              todayCount++;
+            }
           }
         });
 
+        setTotalVotes(todayCount);
         setData(newData);
       } catch (error) {
         console.error('Failed to fetch chart data:', error);
@@ -66,9 +74,14 @@ export function LineChart() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground dark:text-white text-center">
-        {formatDate(new Date())}
-      </p>
+      <div className="text-center space-y-1">
+        <p className="text-sm text-muted-foreground dark:text-white">
+          {formatDate(new Date())}
+        </p>
+        <p className="text-xs text-muted-foreground dark:text-gray-400">
+          Total votes today: {totalVotes}
+        </p>
+      </div>
       <ChartContainer
         config={chartConfig}
         className="h-[200px] sm:h-[300px] w-full"

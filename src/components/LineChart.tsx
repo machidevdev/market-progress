@@ -1,6 +1,14 @@
 'use client';
 
-import { Bar, BarChart, XAxis, YAxis } from 'recharts';
+import {
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Area,
+  ComposedChart,
+  Bar,
+} from 'recharts';
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import React from 'react';
 
@@ -9,51 +17,182 @@ interface Sentiment {
   progress: number;
 }
 
-const chartData = [
-  { range: '0-10%', votes: 0 },
-  { range: '10-20%', votes: 0 },
-  { range: '20-30%', votes: 0 },
-  { range: '30-40%', votes: 0 },
-  { range: '40-50%', votes: 0 },
-  { range: '50-60%', votes: 0 },
-  { range: '60-70%', votes: 0 },
-  { range: '70-80%', votes: 0 },
-  { range: '80-90%', votes: 0 },
-  { range: '90-100%', votes: 0 },
+const marketCycleData = [
+  {
+    time: 0,
+    price: 20,
+    phase: 'Disbelief',
+    text: 'This rally will fail like the others.',
+  },
+  { time: 10, price: 25, phase: 'Hope', text: 'A recovery is possible.' },
+  { time: 20, price: 35, phase: 'Optimism', text: 'This rally is real!' },
+  { time: 30, price: 45, phase: 'Belief', text: 'Time to get fully invested.' },
+  {
+    time: 40,
+    price: 80,
+    phase: 'Euphoria',
+    text: "I'm a genius!\nWe're all going to be rich!",
+  },
+  {
+    time: 50,
+    price: 70,
+    phase: 'Complacency',
+    text: 'We just need to cool off\nfor the next rally.',
+  },
+  {
+    time: 60,
+    price: 55,
+    phase: 'Anxiety',
+    text: 'Why am I getting margin calls?\nThis dip is taking longer than expected.',
+  },
+  {
+    time: 70,
+    price: 40,
+    phase: 'Denial',
+    text: 'My investments are with great companies.\nThey will come back.',
+  },
+  {
+    time: 80,
+    price: 25,
+    phase: 'Panic',
+    text: "Shit! Everyone's selling. I need to get out!",
+  },
+  {
+    time: 90,
+    price: 15,
+    phase: 'Capitulation',
+    text: "I'm getting 100% out of the markets.\nI can't afford to lose more.",
+  },
+  {
+    time: 95,
+    price: 10,
+    phase: 'Anger',
+    text: 'Who shorted the market!?\nWhy did the government\nallow this to happen!?',
+  },
+  {
+    time: 100,
+    price: 15,
+    phase: 'Depression',
+    text: 'My retirement money is lost.\nHow can we pay for all this new stuff?\nI am an idiot.',
+  },
 ];
 
+// Add this after marketCycleData
+const phaseColors = {
+  Disbelief: '#3b82f6', // Blue
+  Hope: '#3b82f6',
+  Optimism: '#3b82f6',
+  Belief: '#22c55e', // Green
+  Euphoria: '#22c55e',
+  Complacency: '#22c55e',
+  Anxiety: '#ef4444', // Red
+  Denial: '#ef4444',
+  Panic: '#ef4444',
+  Capitulation: '#ef4444',
+  Anger: '#ef4444',
+  Depression: '#ef4444',
+};
+
+// Map progress value (0-100) to market phase
+export function getMarketPhase(progress: number) {
+  if (progress < 10) return 'Disbelief';
+  if (progress < 20) return 'Hope';
+  if (progress < 30) return 'Optimism';
+  if (progress < 40) return 'Belief';
+  if (progress < 50) return 'Euphoria';
+  if (progress < 60) return 'Complacency';
+  if (progress < 70) return 'Anxiety';
+  if (progress < 80) return 'Denial';
+  if (progress < 90) return 'Panic';
+  if (progress < 95) return 'Capitulation';
+  if (progress < 98) return 'Anger';
+  return 'Depression';
+}
+
 const chartConfig = {
-  votes: {
-    label: 'Votes',
+  price: {
+    label: 'Market Psychology',
     color: '#2563eb',
   },
 } satisfies ChartConfig;
 
-export function LineChart() {
-  const [data, setData] = React.useState(chartData);
-  const [totalVotes, setTotalVotes] = React.useState(0);
+const formatDate = (date: Date) => {
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+};
+
+// Add this prop to accept click handler
+interface LineChartProps {
+  onVote?: (phase: string) => void;
+  isVoting?: boolean;
+}
+
+// Add this type
+type Phase = keyof typeof phaseColors;
+
+export function LineChart({ onVote, isVoting = false }: LineChartProps) {
+  const [data, setData] = React.useState(
+    marketCycleData.map((item) => ({ ...item, votes: 0 }))
+  );
+  const [summary, setSummary] = React.useState({
+    totalVotes: 0,
+    todayPhase: '',
+    yesterdayPhase: '',
+    trend: '' as 'up' | 'down' | 'same',
+  });
 
   React.useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await fetch('/api/sentiment');
         const sentiments: Sentiment[] = await response.json();
-
-        const newData = chartData.map((item) => ({ ...item, votes: 0 }));
         const today = new Date().toDateString();
-        let todayCount = 0;
+        const yesterday = new Date(Date.now() - 86400000).toDateString();
 
+        let todayVotes = 0;
+        let todayTotal = 0;
+        let yesterdayTotal = 0;
+        let yesterdayVotes = 0;
+
+        const newData = [...data];
         sentiments.forEach((s) => {
-          const rangeIndex = Math.floor(s.progress / 10);
-          if (rangeIndex >= 0 && rangeIndex < 10) {
-            newData[rangeIndex].votes++;
-            if (new Date(s.createdAt).toDateString() === today) {
-              todayCount++;
-            }
+          const phase = getMarketPhase(s.progress);
+          const dataPoint = newData.find((d) => d.phase === phase);
+          if (dataPoint) {
+            dataPoint.votes = (dataPoint.votes || 0) + 1;
+          }
+
+          const date = new Date(s.createdAt).toDateString();
+          if (date === today) {
+            todayVotes++;
+            todayTotal += s.progress;
+          } else if (date === yesterday) {
+            yesterdayVotes++;
+            yesterdayTotal += s.progress;
           }
         });
 
-        setTotalVotes(todayCount);
+        const todayAvg = todayVotes ? Math.round(todayTotal / todayVotes) : 0;
+        const yesterdayAvg = yesterdayVotes
+          ? Math.round(yesterdayTotal / yesterdayVotes)
+          : 0;
+
+        setSummary({
+          totalVotes: todayVotes,
+          todayPhase: getMarketPhase(todayAvg),
+          yesterdayPhase: getMarketPhase(yesterdayAvg),
+          trend:
+            todayAvg > yesterdayAvg
+              ? 'up'
+              : todayAvg < yesterdayAvg
+              ? 'down'
+              : 'same',
+        });
+
         setData(newData);
       } catch (error) {
         console.error('Failed to fetch chart data:', error);
@@ -63,51 +202,181 @@ export function LineChart() {
     fetchData();
   }, []);
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+  const getSentimentDescription = () => {
+    if (!summary.todayPhase) return 'Waiting for first votes of the day...';
+    if (!summary.yesterdayPhase)
+      return (
+        <>
+          Current sentiment:{' '}
+          <span style={{ color: phaseColors[summary.todayPhase as Phase] }}>
+            {summary.todayPhase}
+          </span>
+        </>
+      );
+
+    return summary.trend === 'same' ? (
+      <>
+        Sentiment remains in{' '}
+        <span style={{ color: phaseColors[summary.todayPhase as Phase] }}>
+          {summary.todayPhase}
+        </span>{' '}
+        phase
+      </>
+    ) : (
+      <>
+        Sentiment moved {summary.trend} from{' '}
+        <span style={{ color: phaseColors[summary.yesterdayPhase as Phase] }}>
+          {summary.yesterdayPhase}
+        </span>{' '}
+        to{' '}
+        <span style={{ color: phaseColors[summary.todayPhase as Phase] }}>
+          {summary.todayPhase}
+        </span>
+      </>
+    );
   };
 
   return (
-    <div className="space-y-4">
-      <div className="text-center space-y-1">
-        <p className="text-sm text-muted-foreground dark:text-white">
+    <div className="space-y-4 w-full">
+      {isVoting && (
+        <p className="hidden sm:block text-sm text-center text-orange-500 font-bold">
+          Click on the chart to select your market sentiment and vote to see the
+          collective sentiment.
+        </p>
+      )}
+      <div className="text-center space-y-2 px-4 sm:px-0">
+        <p className="hidden sm:block text-sm text-muted-foreground dark:text-white">
           {formatDate(new Date())}
         </p>
         <p className="text-xs text-muted-foreground dark:text-gray-400">
-          Total votes today: {totalVotes}
+          Total votes today: {summary.totalVotes}
+        </p>
+        <p className="text-sm font-medium text-muted-foreground dark:text-white">
+          {getSentimentDescription()}
         </p>
       </div>
-      <ChartContainer
-        config={chartConfig}
-        className="h-[200px] sm:h-[300px] w-full"
-      >
-        <BarChart
-          accessibilityLayer
-          data={data}
-          margin={{
-            left: 0,
-            right: 10,
-            top: 10,
-            bottom: 40,
-          }}
-        >
-          <XAxis
-            dataKey="range"
-            angle={-45}
-            textAnchor="end"
-            height={60}
-            tick={{ fontSize: 10 }}
-            interval={0}
-          />
-          <YAxis width={30} tick={{ fontSize: 10 }} />
-          <Bar dataKey="votes" fill="var(--color-votes)" radius={4} />
-        </BarChart>
-      </ChartContainer>
+      <div className="w-full sm:mx-0">
+        <div className="min-w-[320px]  sm:px-0">
+          <ChartContainer
+            config={chartConfig}
+            className="h-[300px] sm:h-[500px] w-full"
+          >
+            <ComposedChart
+              data={data}
+              margin={{
+                top: 40,
+                right: 30,
+                left: 35,
+                bottom: 60,
+              }}
+              onClick={(data) => {
+                if (isVoting && onVote && data.activePayload) {
+                  onVote(data.activePayload[0].payload.phase);
+                }
+              }}
+            >
+              <defs>
+                <linearGradient id="colorGradient" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#3b82f6" />
+                  <stop offset="50%" stopColor="#22c55e" />
+                  <stop offset="100%" stopColor="#ef4444" />
+                </linearGradient>
+              </defs>
+              <XAxis
+                dataKey="phase"
+                angle={-45}
+                textAnchor="end"
+                height={60}
+                tick={{ fontSize: 8 }}
+                interval={0}
+                scale="point"
+              />
+              <YAxis yAxisId="price" hide={true} />
+              <YAxis
+                yAxisId="votes"
+                orientation="right"
+                tick={{ fontSize: 8 }}
+                width={20}
+                hide={isVoting}
+              />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    return (
+                      <div className="bg-black/80 p-2 rounded-md text-xs">
+                        <p className="font-bold text-white">{data.phase}</p>
+                        <p className="text-gray-200 whitespace-pre-line">
+                          {data.text}
+                        </p>
+                        {!isVoting && (
+                          <p className="text-gray-200">
+                            Votes: {data.votes || 0}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Area
+                yAxisId="price"
+                type="monotone"
+                dataKey="price"
+                stroke="url(#colorGradient)"
+                fill="transparent"
+                strokeWidth={3}
+                dot={false}
+                cursor={isVoting ? 'pointer' : 'default'}
+              />
+              <Line
+                yAxisId="price"
+                type="monotone"
+                dataKey="price"
+                stroke="url(#colorGradient)"
+                strokeWidth={3}
+                cursor={isVoting ? 'pointer' : 'default'}
+                dot={(props) => {
+                  const { cx, cy, payload } = props;
+                  const width = payload.phase.length > 8 ? 80 : 70;
+                  return (
+                    <g className="hidden sm:block">
+                      <rect
+                        x={cx - width / 2}
+                        y={cy - 25}
+                        width={width}
+                        height={20}
+                        fill="rgba(0,0,0,0.75)"
+                        rx={4}
+                      />
+                      <text
+                        x={cx}
+                        y={cy - 12}
+                        textAnchor="middle"
+                        fill="white"
+                        fontSize="11"
+                        fontWeight="bold"
+                        className="select-none"
+                      >
+                        {payload.phase}
+                      </text>
+                    </g>
+                  );
+                }}
+              />
+              {!isVoting && (
+                <Bar
+                  yAxisId="votes"
+                  dataKey="votes"
+                  fill="rgba(255,255,255,0.1)"
+                  radius={4}
+                />
+              )}
+            </ComposedChart>
+          </ChartContainer>
+        </div>
+      </div>
     </div>
   );
 }

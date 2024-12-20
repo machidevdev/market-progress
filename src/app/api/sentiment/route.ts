@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
     if (existingVote) {
       return NextResponse.json(
-        { error: 'Already voted today' },
+        { error: 'You have already voted today. Please come back tomorrow!' },
         { status: 429 }
       );
     }
@@ -39,8 +39,8 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Failed to save sentiment:', error);
     return NextResponse.json(
-      { error: 'Failed to save sentiment' },
-      { status: 500 }
+      { error: 'You have already voted today from a different browser. Please come back tomorrow!' },
+      { status: 400 }
     );
   }
 }

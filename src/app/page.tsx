@@ -3,25 +3,42 @@
 import { Progress } from '@/components/ui/progress';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
 import { LineChart } from '@/components/LineChart';
 
 export default function Home() {
   const [progress, setProgress] = useState(65);
   const [averageSentiment, setAverageSentiment] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasVoted, setHasVoted] = useState(false);
+  const [, setHasVoted] = useState(false);
   const [, setLastVoteDate] = useState<string | null>(null);
+  const [selectedPhase, setSelectedPhase] = useState('');
+  const [showResults, setShowResults] = useState(false);
 
   useEffect(() => {
-    // Check if user has voted today
-    const lastVote = localStorage.getItem('lastVoteDate');
-    const today = new Date().toDateString();
+    // Check if user has voted today from either localStorage or by making an API call
+    const checkVoteStatus = async () => {
+      const lastVote = localStorage.getItem('lastVoteDate');
+      const today = new Date().toDateString();
 
-    if (lastVote === today) {
-      setHasVoted(true);
-      setLastVoteDate(lastVote);
-    }
+      if (lastVote === today) {
+        setHasVoted(true);
+        setLastVoteDate(lastVote);
+        setShowResults(true);
+      } else {
+        // Check if IP has voted
+        try {
+          const response = await fetch('/api/sentiment/check');
+          const { hasVoted } = await response.json();
+          if (hasVoted) {
+            setShowResults(true);
+          }
+        } catch (error) {
+          console.error('Failed to check vote status:', error);
+        }
+      }
+    };
+
+    checkVoteStatus();
   }, []);
 
   useEffect(() => {
@@ -66,7 +83,11 @@ export default function Home() {
         body: JSON.stringify({ progress }),
       });
 
-      if (!response.ok) throw new Error('Failed to submit');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to submit');
+      }
 
       // Save vote date to localStorage
       const today = new Date().toDateString();
@@ -74,94 +95,84 @@ export default function Home() {
       setHasVoted(true);
       setLastVoteDate(today);
     } catch (error) {
-      console.error('Failed to submit:', error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'Failed to submit vote. Please try again.'
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handlePhaseSelect = (phase: string) => {
+    const phaseToProgress = {
+      Disbelief: 5,
+      Hope: 15,
+      Optimism: 25,
+      Belief: 35,
+      Euphoria: 45,
+      Complacency: 55,
+      Anxiety: 65,
+      Denial: 75,
+      Panic: 85,
+      Capitulation: 92,
+      Anger: 96,
+      Depression: 99,
+    };
+    setProgress(phaseToProgress[phase as keyof typeof phaseToProgress]);
+    setSelectedPhase(phase);
+  };
+
   return (
     <div
-      className={`min-h-screen flex flex-col items-center p-4 sm:p-8 bg-black ${
-        !hasVoted && 'justify-center'
+      className={`min-h-screen w-full flex flex-col items-center p-4 sm:p-8 bg-black ${
+        !showResults && 'justify-center'
       }`}
     >
-      <div className="w-full max-w-md space-y-6 sm:space-y-8">
-        <div className="space-y-4">
-          <h1 className="text-2xl font-bold text-center dark:text-white">
+      <div className="w-full max-w-4xl flex flex-col items-center justify-center space-y-6 sm:space-y-8">
+        <div className="space-y-4 w-full text-center">
+          <h1 className="text-2xl font-bold dark:text-white">
             Bull Market Progress
           </h1>
-          <div className="text-sm text-center space-y-2 dark:text-gray-400">
+          <div className="text-sm dark:text-gray-400">
             <p>
               Help track the bull market sentiment by submitting your view on
               the current progress.
             </p>
-            <ul className="text-xs space-y-1">
-              <li>
-                <span className="text-blue-400">0-30%:</span> Early bull market,
-                accumulation phase
-              </li>
-              <li>
-                <span className="text-green-400">30-70%:</span> Mid bull market,
-                trending phase
-              </li>
-              <li>
-                <span className="text-red-400">70-100%:</span> Late bull market,
-                distribution phase
-              </li>
-            </ul>
           </div>
         </div>
 
-        <div className="space-y-6">
-          {!hasVoted && (
-            <>
-              <div className="space-y-2">
-                <p className="text-sm text-center dark:text-gray-400">
-                  Submit your sentiment
+        {!showResults ? (
+          <div className="w-full space-y-6 flex justify-center flex-col">
+            <LineChart onVote={handlePhaseSelect} isVoting={true} />
+            {selectedPhase && (
+              <div className="text-center space-y-4 w-40 mx-auto">
+                <p className="text-white">
+                  Selected: <span className="font-bold">{selectedPhase}</span>
                 </p>
-                <Slider
-                  value={[progress]}
-                  onValueChange={(value) => setProgress(value[0])}
-                  min={0}
-                  max={100}
-                  step={1}
+                <Button
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
                   className="w-full"
-                />
-                <p className="text-sm text-center font-medium dark:text-white">
-                  {progress}%
-                </p>
+                >
+                  {isSubmitting ? 'Submitting...' : 'Confirm Vote'}
+                </Button>
               </div>
-
-              <Button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="w-full"
-              >
-                {isSubmitting ? 'Submitting...' : 'Submit Your View'}
-              </Button>
-            </>
-          )}
-
-          {hasVoted && averageSentiment > 0 && (
-            <div className="space-y-2">
-              <Progress
-                value={averageSentiment}
-                className="h-4 rounded-none [&>div]:rounded-none [&>div]:bg-white [&>div]:animate-progress-stripes [&>div]:bg-[length:20px_20px] [&>div]:bg-gradient-to-r [&>div]:from-white/50 [&>div]:to-transparent"
-              />
-              <p className="text-sm text-center font-medium dark:text-white">
-                Average market sentiment: {averageSentiment}%
-              </p>
-            </div>
-          )}
-        </div>
-
-        {hasVoted && (
-          <div className="mt-8 sm:mt-12 h-[250px] sm:h-[300px]">
-            <h2 className="text-lg sm:text-xl font-bold mb-4 text-center dark:text-white">
-              Historical Sentiment
-            </h2>
-            <LineChart />
+            )}
+          </div>
+        ) : (
+          <div className="w-full">
+            <LineChart isVoting={false} />
+            {averageSentiment > 0 && (
+              <div className="space-y-2 max-w-xl mx-auto mt-4">
+                <Progress
+                  value={averageSentiment}
+                  className="h-4 rounded-none [&>div]:rounded-none [&>div]:bg-white [&>div]:animate-progress-stripes [&>div]:bg-[length:20px_20px] [&>div]:bg-gradient-to-r [&>div]:from-white/50 [&>div]:to-transparent"
+                />
+                <div className="text-center text-white">Loading...</div>
+              </div>
+            )}
           </div>
         )}
       </div>

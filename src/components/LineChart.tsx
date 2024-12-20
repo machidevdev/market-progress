@@ -150,47 +150,32 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
       try {
         const response = await fetch('/api/sentiment');
         const sentiments: Sentiment[] = await response.json();
-        const today = new Date().toDateString();
-        const yesterday = new Date(Date.now() - 86400000).toDateString();
 
-        let todayVotes = 0;
-        let todayTotal = 0;
-        let yesterdayTotal = 0;
-        let yesterdayVotes = 0;
+        // Reset votes for new day
+        const newData = marketCycleData.map((item) => ({ ...item, votes: 0 }));
 
-        const newData = [...data];
+        // Only count today's votes
         sentiments.forEach((s) => {
           const phase = getMarketPhase(s.progress);
           const dataPoint = newData.find((d) => d.phase === phase);
           if (dataPoint) {
             dataPoint.votes = (dataPoint.votes || 0) + 1;
           }
-
-          const date = new Date(s.createdAt).toDateString();
-          if (date === today) {
-            todayVotes++;
-            todayTotal += s.progress;
-          } else if (date === yesterday) {
-            yesterdayVotes++;
-            yesterdayTotal += s.progress;
-          }
         });
 
+        // Calculate today's and yesterday's averages
+        const todayVotes = sentiments.length;
+        const todayTotal = sentiments.reduce(
+          (acc, curr) => acc + curr.progress,
+          0
+        );
         const todayAvg = todayVotes ? Math.round(todayTotal / todayVotes) : 0;
-        const yesterdayAvg = yesterdayVotes
-          ? Math.round(yesterdayTotal / yesterdayVotes)
-          : 0;
 
         setSummary({
           totalVotes: todayVotes,
           todayPhase: getMarketPhase(todayAvg),
-          yesterdayPhase: getMarketPhase(yesterdayAvg),
-          trend:
-            todayAvg > yesterdayAvg
-              ? 'up'
-              : todayAvg < yesterdayAvg
-              ? 'down'
-              : 'same',
+          yesterdayPhase: '', // We could fetch yesterday's data if needed
+          trend: 'same',
         });
 
         setData(newData);

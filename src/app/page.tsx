@@ -15,12 +15,19 @@ export default function Home() {
   const [showResults, setShowResults] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const getTodayUTC = () => {
+    const now = new Date();
+    return new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    ).toISOString();
+  };
+
   useEffect(() => {
     const checkVoteStatus = async () => {
       try {
         setIsLoading(true);
         const lastVote = localStorage.getItem('lastVoteDate');
-        const today = new Date().toDateString();
+        const today = getTodayUTC();
 
         if (lastVote === today) {
           setHasVoted(true);
@@ -91,8 +98,7 @@ export default function Home() {
         throw new Error(data.error || 'Failed to submit');
       }
 
-      // Save vote date to localStorage
-      const today = new Date().toDateString();
+      const today = getTodayUTC();
       localStorage.setItem('lastVoteDate', today);
       setHasVoted(true);
       setLastVoteDate(today);

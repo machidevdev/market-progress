@@ -8,15 +8,14 @@ export async function POST(request: Request) {
     const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
     const { progress } = await request.json();
 
-    // Check if user has voted today
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const startOfDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
     
     const existingVote = await prisma.marketSentiment.findFirst({
       where: {
         ip,
         createdAt: {
-          gte: today,
+          gte: startOfDay,
         },
       },
     });
@@ -47,23 +46,27 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
+    const today = new Date();
+    const startOfDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    
     const sentiments = await prisma.marketSentiment.findMany({
+      where: {
+        createdAt: {
+          gte: startOfDay,
+        },
+      },
       orderBy: {
         createdAt: 'asc',
       },
       select: {
         progress: true,
         createdAt: true,
-        // Don't send IP addresses to client
       },
     });
 
     return NextResponse.json(sentiments);
   } catch (error) {
     console.error('Failed to fetch sentiments:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch sentiments' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch sentiments' }, { status: 500 });
   }
 } 

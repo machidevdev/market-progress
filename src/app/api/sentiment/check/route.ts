@@ -7,13 +7,13 @@ export async function GET(request: Request) {
   try {
     const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const startOfDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
     
     const existingVote = await prisma.marketSentiment.findFirst({
       where: {
         ip,
         createdAt: {
-          gte: today,
+          gte: startOfDay,
         },
       },
     });

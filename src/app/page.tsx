@@ -31,11 +31,21 @@ export default function Home() {
         const sentiments = await response.json();
 
         if (sentiments.length > 0) {
-          const total = sentiments.reduce(
-            (acc: number, curr: { progress: number }) => acc + curr.progress,
-            0
+          const today = new Date().toDateString();
+          const todaysSentiments = sentiments.filter(
+            (s: { createdAt: string }) =>
+              new Date(s.createdAt).toDateString() === today
           );
-          setAverageSentiment(Math.round(total / sentiments.length));
+
+          if (todaysSentiments.length > 0) {
+            const total = todaysSentiments.reduce(
+              (acc: number, curr: { progress: number }) => acc + curr.progress,
+              0
+            );
+            setAverageSentiment(Math.round(total / todaysSentiments.length));
+          } else {
+            setAverageSentiment(0);
+          }
         }
       } catch (error) {
         console.error('Failed to fetch average sentiment:', error);

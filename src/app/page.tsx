@@ -137,8 +137,9 @@ export default function Home() {
           </h1>
           <div className="text-sm dark:text-gray-400">
             <p>
-              Help track the bull market sentiment by submitting your view on
-              the current progress.
+              Help track the market sentiment by submitting your view on the
+              current progress. To do this, click on the chart to select your
+              sentiment and vote.
             </p>
           </div>
         </div>

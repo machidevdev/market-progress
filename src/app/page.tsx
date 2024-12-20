@@ -106,20 +106,10 @@ export default function Home() {
                 distribution phase
               </li>
             </ul>
-            <p className="pt-2 font-medium">
-              Average market sentiment: {averageSentiment}%
-            </p>
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="space-y-2">
-            <Progress
-              value={averageSentiment}
-              className="h-4 rounded-none [&>div]:rounded-none [&>div]:bg-white [&>div]:animate-progress-stripes [&>div]:bg-[length:20px_20px] [&>div]:bg-gradient-to-r [&>div]:from-white/50 [&>div]:to-transparent"
-            />
-          </div>
-
           <div className="space-y-2">
             {hasVoted ? (
               <p className="text-sm text-center text-yellow-400">
@@ -156,6 +146,18 @@ export default function Home() {
               ? 'Already Voted Today'
               : 'Submit Your View'}
           </Button>
+
+          {hasVoted && averageSentiment > 0 && (
+            <div className="space-y-2">
+              <Progress
+                value={averageSentiment}
+                className="h-4 rounded-none [&>div]:rounded-none [&>div]:bg-white [&>div]:animate-progress-stripes [&>div]:bg-[length:20px_20px] [&>div]:bg-gradient-to-r [&>div]:from-white/50 [&>div]:to-transparent"
+              />
+              <p className="text-sm text-center font-medium dark:text-white">
+                Average market sentiment: {averageSentiment}%
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="mt-8 sm:mt-12 h-[250px] sm:h-[300px]">

@@ -51,7 +51,6 @@ export async function GET() {
       orderBy: {
         createdAt: 'asc',
       },
-      take: 100, // Last 100 entries
       select: {
         progress: true,
         createdAt: true,

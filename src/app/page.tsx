@@ -81,7 +81,11 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center p-4 sm:p-8 bg-black">
+    <div
+      className={`min-h-screen flex flex-col items-center p-4 sm:p-8 bg-black ${
+        !hasVoted && 'justify-center'
+      }`}
+    >
       <div className="w-full max-w-md space-y-6 sm:space-y-8">
         <div className="space-y-4">
           <h1 className="text-2xl font-bold text-center dark:text-white">
@@ -110,13 +114,9 @@ export default function Home() {
         </div>
 
         <div className="space-y-6">
-          <div className="space-y-2">
-            {hasVoted ? (
-              <p className="text-sm text-center text-yellow-400">
-                You have already voted today. Come back tomorrow!
-              </p>
-            ) : (
-              <>
+          {!hasVoted && (
+            <>
+              <div className="space-y-2">
                 <p className="text-sm text-center dark:text-gray-400">
                   Submit your sentiment
                 </p>
@@ -131,21 +131,17 @@ export default function Home() {
                 <p className="text-sm text-center font-medium dark:text-white">
                   {progress}%
                 </p>
-              </>
-            )}
-          </div>
+              </div>
 
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting || hasVoted}
-            className="w-full"
-          >
-            {isSubmitting
-              ? 'Submitting...'
-              : hasVoted
-              ? 'Already Voted Today'
-              : 'Submit Your View'}
-          </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="w-full"
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit Your View'}
+              </Button>
+            </>
+          )}
 
           {hasVoted && averageSentiment > 0 && (
             <div className="space-y-2">
@@ -160,12 +156,14 @@ export default function Home() {
           )}
         </div>
 
-        <div className="mt-8 sm:mt-12 h-[250px] sm:h-[300px]">
-          <h2 className="text-lg sm:text-xl font-bold mb-4 text-center dark:text-white">
-            Historical Sentiment
-          </h2>
-          <LineChart />
-        </div>
+        {hasVoted && (
+          <div className="mt-8 sm:mt-12 h-[250px] sm:h-[300px]">
+            <h2 className="text-lg sm:text-xl font-bold mb-4 text-center dark:text-white">
+              Historical Sentiment
+            </h2>
+            <LineChart />
+          </div>
+        )}
       </div>
     </div>
   );

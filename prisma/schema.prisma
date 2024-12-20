@@ -11,7 +11,7 @@ model MarketSentiment {
   id        String   @id @default(cuid())
   progress  Int
   createdAt DateTime @default(now())
-  ip        String
+  ip        String?
   
   @@index([ip, createdAt])
 } 

@@ -39,7 +39,7 @@ export function LineChart() {
         const response = await fetch('/api/sentiment');
         const sentiments: Sentiment[] = await response.json();
 
-        const newData = [...chartData];
+        const newData = chartData.map((item) => ({ ...item, votes: 0 }));
         const today = new Date().toDateString();
         let todayCount = 0;
 

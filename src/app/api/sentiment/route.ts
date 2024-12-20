@@ -47,24 +47,31 @@ export async function POST(request: Request) {
 export async function GET() {
   try {
     const today = new Date();
-    const startOfDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    const startOfToday = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    const startOfYesterday = new Date(startOfToday);
+    startOfYesterday.setUTCDate(startOfYesterday.getUTCDate() - 1);
     
-    const sentiments = await prisma.marketSentiment.findMany({
-      where: {
-        createdAt: {
-          gte: startOfDay,
+    const [todayVotes, yesterdayVotes] = await Promise.all([
+      // Get today's votes
+      prisma.marketSentiment.findMany({
+        where: {
+          createdAt: {
+            gte: startOfToday,
+          },
         },
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-      select: {
-        progress: true,
-        createdAt: true,
-      },
-    });
+      }),
+      // Get yesterday's votes
+      prisma.marketSentiment.findMany({
+        where: {
+          createdAt: {
+            gte: startOfYesterday,
+            lt: startOfToday,
+          },
+        },
+      }),
+    ]);
 
-    return NextResponse.json(sentiments);
+    return NextResponse.json({ today: todayVotes, yesterday: yesterdayVotes });
   } catch (error) {
     console.error('Failed to fetch sentiments:', error);
     return NextResponse.json({ error: 'Failed to fetch sentiments' }, { status: 500 });

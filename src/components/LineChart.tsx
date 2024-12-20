@@ -134,6 +134,11 @@ interface LineChartProps {
 // Add this type
 type Phase = keyof typeof phaseColors;
 
+// Add this helper function to get phase position (0-11)
+const getPhasePosition = (phase: string) => {
+  return marketCycleData.findIndex((item) => item.phase === phase);
+};
+
 export function LineChart({ onVote, isVoting = false }: LineChartProps) {
   const [data, setData] = React.useState(
     marketCycleData.map((item) => ({ ...item, votes: 0 }))
@@ -149,33 +154,62 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
     const fetchData = async () => {
       try {
         const response = await fetch('/api/sentiment');
-        const sentiments: Sentiment[] = await response.json();
+        const { today: todayVotes, yesterday: yesterdayVotes } =
+          await response.json();
 
         // Reset votes for new day
         const newData = marketCycleData.map((item) => ({ ...item, votes: 0 }));
 
-        // Only count today's votes
-        sentiments.forEach((s) => {
+        // Count votes and get most voted phase for today
+        const todayPhaseCounts: { [key: string]: number } = {};
+        todayVotes.forEach((s: Sentiment) => {
           const phase = getMarketPhase(s.progress);
+          todayPhaseCounts[phase] = (todayPhaseCounts[phase] || 0) + 1;
+
           const dataPoint = newData.find((d) => d.phase === phase);
           if (dataPoint) {
             dataPoint.votes = (dataPoint.votes || 0) + 1;
           }
         });
 
-        // Calculate today's and yesterday's averages
-        const todayVotes = sentiments.length;
-        const todayTotal = sentiments.reduce(
-          (acc, curr) => acc + curr.progress,
-          0
-        );
-        const todayAvg = todayVotes ? Math.round(todayTotal / todayVotes) : 0;
+        // Get most voted phase for yesterday
+        const yesterdayPhaseCounts: { [key: string]: number } = {};
+        yesterdayVotes.forEach((s: Sentiment) => {
+          const phase = getMarketPhase(s.progress);
+          yesterdayPhaseCounts[phase] = (yesterdayPhaseCounts[phase] || 0) + 1;
+        });
+
+        // Get the most voted phases
+        const todayPhase =
+          Object.entries(todayPhaseCounts).length > 0
+            ? Object.entries(todayPhaseCounts).reduce((a, b) =>
+                b[1] > a[1] ? b : a
+              )[0]
+            : '';
+
+        const yesterdayPhase =
+          Object.entries(yesterdayPhaseCounts).length > 0
+            ? Object.entries(yesterdayPhaseCounts).reduce((a, b) =>
+                b[1] > a[1] ? b : a
+              )[0]
+            : '';
+
+        // Compare phase positions to determine trend
+        const todayPos = getPhasePosition(todayPhase);
+        const yesterdayPos = getPhasePosition(yesterdayPhase);
+        const trend = !yesterdayPhase
+          ? 'same'
+          : todayPos > yesterdayPos
+          ? 'up'
+          : todayPos < yesterdayPos
+          ? 'down'
+          : 'same';
 
         setSummary({
-          totalVotes: todayVotes,
-          todayPhase: getMarketPhase(todayAvg),
-          yesterdayPhase: '', // We could fetch yesterday's data if needed
-          trend: 'same',
+          totalVotes: todayVotes.length,
+          todayPhase: todayPhase || 'Waiting for votes',
+          yesterdayPhase,
+          trend,
         });
 
         setData(newData);
@@ -199,23 +233,19 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
         </>
       );
 
-    return summary.trend === 'same' ? (
+    // Always show the movement, even if it's the same phase
+    return (
       <>
-        Sentiment remains in{' '}
+        Market sentiment{' '}
+        {summary.trend === 'same'
+          ? 'stayed at'
+          : 'moved ' + summary.trend + ' to'}{' '}
         <span style={{ color: phaseColors[summary.todayPhase as Phase] }}>
           {summary.todayPhase}
         </span>{' '}
-        phase
-      </>
-    ) : (
-      <>
-        Sentiment moved {summary.trend} from{' '}
+        from{' '}
         <span style={{ color: phaseColors[summary.yesterdayPhase as Phase] }}>
           {summary.yesterdayPhase}
-        </span>{' '}
-        to{' '}
-        <span style={{ color: phaseColors[summary.todayPhase as Phase] }}>
-          {summary.todayPhase}
         </span>
       </>
     );

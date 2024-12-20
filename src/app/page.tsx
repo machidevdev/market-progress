@@ -192,6 +192,15 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      <a
+        href="https://twitter.com/machiuwuowo"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-4 text-sm text-gray-500 hover:text-gray-300 transition-colors"
+      >
+        Feedback
+      </a>
     </div>
   );
 }

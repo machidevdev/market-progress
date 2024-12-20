@@ -134,11 +134,6 @@ interface LineChartProps {
 // Add this type
 type Phase = keyof typeof phaseColors;
 
-// Add this helper function to get phase position (0-11)
-const getPhasePosition = (phase: string) => {
-  return marketCycleData.findIndex((item) => item.phase === phase);
-};
-
 export function LineChart({ onVote, isVoting = false }: LineChartProps) {
   const [data, setData] = React.useState(
     marketCycleData.map((item) => ({ ...item, votes: 0 }))
@@ -160,56 +155,48 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
         // Reset votes for new day
         const newData = marketCycleData.map((item) => ({ ...item, votes: 0 }));
 
-        // Count votes and get most voted phase for today
-        const todayPhaseCounts: { [key: string]: number } = {};
+        // Count votes and calculate today's average
         todayVotes.forEach((s: Sentiment) => {
           const phase = getMarketPhase(s.progress);
-          todayPhaseCounts[phase] = (todayPhaseCounts[phase] || 0) + 1;
-
           const dataPoint = newData.find((d) => d.phase === phase);
           if (dataPoint) {
             dataPoint.votes = (dataPoint.votes || 0) + 1;
           }
         });
 
-        // Get most voted phase for yesterday
-        const yesterdayPhaseCounts: { [key: string]: number } = {};
-        yesterdayVotes.forEach((s: Sentiment) => {
-          const phase = getMarketPhase(s.progress);
-          yesterdayPhaseCounts[phase] = (yesterdayPhaseCounts[phase] || 0) + 1;
-        });
+        // Calculate averages
+        const todayTotal = todayVotes.reduce(
+          (acc: number, curr: Sentiment) => acc + curr.progress,
+          0
+        );
+        const yesterdayTotal = yesterdayVotes.reduce(
+          (acc: number, curr: Sentiment) => acc + curr.progress,
+          0
+        );
 
-        // Get the most voted phases
-        const todayPhase =
-          Object.entries(todayPhaseCounts).length > 0
-            ? Object.entries(todayPhaseCounts).reduce((a, b) =>
-                b[1] > a[1] ? b : a
-              )[0]
-            : '';
+        const todayAvg = todayVotes.length
+          ? Math.round(todayTotal / todayVotes.length)
+          : 0;
+        const yesterdayAvg = yesterdayVotes.length
+          ? Math.round(yesterdayTotal / yesterdayVotes.length)
+          : 0;
 
-        const yesterdayPhase =
-          Object.entries(yesterdayPhaseCounts).length > 0
-            ? Object.entries(yesterdayPhaseCounts).reduce((a, b) =>
-                b[1] > a[1] ? b : a
-              )[0]
-            : '';
-
-        // Compare phase positions to determine trend
-        const todayPos = getPhasePosition(todayPhase);
-        const yesterdayPos = getPhasePosition(yesterdayPhase);
-        const trend = !yesterdayPhase
-          ? 'same'
-          : todayPos > yesterdayPos
-          ? 'up'
-          : todayPos < yesterdayPos
-          ? 'down'
-          : 'same';
+        const todayPhase = getMarketPhase(todayAvg);
+        const yesterdayPhase = yesterdayVotes.length
+          ? getMarketPhase(yesterdayAvg)
+          : '';
 
         setSummary({
           totalVotes: todayVotes.length,
-          todayPhase: todayPhase || 'Waiting for votes',
+          todayPhase,
           yesterdayPhase,
-          trend,
+          trend: !yesterdayPhase
+            ? 'same'
+            : todayAvg > yesterdayAvg
+            ? 'up'
+            : todayAvg < yesterdayAvg
+            ? 'down'
+            : 'same',
         });
 
         setData(newData);
@@ -226,7 +213,7 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
     if (!summary.yesterdayPhase)
       return (
         <>
-          Current sentiment:{' '}
+          Current overall sentiment:{' '}
           <span style={{ color: phaseColors[summary.todayPhase as Phase] }}>
             {summary.todayPhase}
           </span>

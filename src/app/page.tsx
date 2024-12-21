@@ -95,6 +95,9 @@ export default function Home() {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 400 || response.status === 429) {
+          setShowResults(true);
+        }
         throw new Error(data.error || 'Failed to submit');
       }
 

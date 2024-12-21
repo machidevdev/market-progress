@@ -14,7 +14,7 @@ import React from 'react';
 
 interface Sentiment {
   createdAt: string;
-  progress: number;
+  phase: string;
 }
 
 // For the left chart - keeps the original curve shape
@@ -128,17 +128,18 @@ const marketCycleData = [
 
 // For the right chart - ordered from bottom to top
 export function getMarketPhase(progress: number) {
+  //depression
   if (progress < 10) return 'Depression';
-  if (progress < 20) return 'Anger';
-  if (progress < 30) return 'Capitulation';
-  if (progress < 40) return 'Panic';
-  if (progress < 50) return 'Denial';
-  if (progress < 60) return 'Anxiety';
-  if (progress < 70) return 'Complacency';
-  if (progress < 80) return 'Euphoria';
-  if (progress < 85) return 'Belief';
-  if (progress < 90) return 'Optimism';
-  if (progress < 95) return 'Hope';
+  if (progress < 10) return 'Disbelief-Start';
+  if (progress < 20) return 'Disbelief-End';
+  if (progress < 30) return 'Hope';
+  if (progress < 40) return 'Optimism';
+  if (progress < 50) return 'Belief';
+  if (progress < 60) return 'Euphoria';
+  if (progress < 80) return 'Complacency';
+  if (progress < 85) return 'Euphoria-Wick';
+  if (progress < 90) return 'Euphoria-Recovery';
+  if (progress < 95) return 'Euphoria';
   return 'Disbelief';
 }
 
@@ -192,13 +193,29 @@ interface CorrelationData {
   totalVotes: number;
 }
 
+// Define the ordered phases array
+const orderedPhases = [
+  'Depression',
+  'Anger',
+  'Capitulation',
+  'Panic',
+  'Disbelief-Start',
+  'Disbelief-End',
+  'Hope',
+  'Denial',
+  'Optimism',
+  'Anxiety',
+  'Belief',
+  'Euphoria-Wick',
+  'Euphoria-Recovery',
+  'Euphoria',
+];
+
 export function LineChart({ onVote, isVoting = false }: LineChartProps) {
   const [data, setData] = React.useState(
     marketCycleData.map((item) => ({ ...item, votes: 0 }))
   );
-  const [, setYesterdayData] = React.useState(
-    marketCycleData.map((item) => ({ ...item, votes: 0 }))
-  );
+
   const [summary, setSummary] = React.useState({
     totalVotes: 0,
     todayPhase: '',
@@ -219,83 +236,44 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
         // Reset votes for new day
         const newData = marketCycleData.map((item) => ({ ...item, votes: 0 }));
 
-        // Count votes and calculate today's average
+        // Count votes directly by phase
         todayVotes.forEach((s: Sentiment) => {
-          const phase = getMarketPhase(s.progress);
-          const dataPoint = newData.find((d) => d.phase === phase);
+          const dataPoint = newData.find((d) => d.displayPhase === s.phase);
           if (dataPoint) {
             dataPoint.votes = (dataPoint.votes || 0) + 1;
           }
         });
 
-        // Process yesterday's data
-        const yesterdayNewData = marketCycleData.map((item) => ({
-          ...item,
-          votes: 0,
-        }));
-        yesterdayVotes.forEach((s: Sentiment) => {
-          const phase = getMarketPhase(s.progress);
-          const dataPoint = yesterdayNewData.find((d) => d.phase === phase);
-          if (dataPoint) {
-            dataPoint.votes = (dataPoint.votes || 0) + 1;
-          }
-        });
+        // Calculate today's and yesterday's most voted phases
+        const todayPhase = getMostVotedPhase(todayVotes);
+        const yesterdayPhase = getMostVotedPhase(yesterdayVotes);
 
-        // Calculate averages
-        const todayTotal = todayVotes.reduce(
-          (acc: number, curr: Sentiment) => acc + curr.progress,
-          0
-        );
-        const yesterdayTotal = yesterdayVotes.reduce(
-          (acc: number, curr: Sentiment) => acc + curr.progress,
-          0
-        );
+        // Set correlation data
+        const correlationPoints = [
+          {
+            date: 'Yesterday',
+            sentiment: getPhasePosition(yesterdayPhase) * 10, // Convert phase to numeric value
+            phase: yesterdayPhase,
+            totalVotes: yesterdayVotes.length,
+          },
+          {
+            date: 'Today',
+            sentiment: getPhasePosition(todayPhase) * 10,
+            phase: todayPhase,
+            totalVotes: todayVotes.length,
+          },
+        ];
 
-        const todayAvg = todayVotes.length
-          ? Math.round(todayTotal / todayVotes.length)
-          : 0;
-        const yesterdayAvg = yesterdayVotes.length
-          ? Math.round(yesterdayTotal / yesterdayVotes.length)
-          : 0;
-
-        const todayPhase = getMarketPhase(todayAvg);
-        const yesterdayPhase = yesterdayVotes.length
-          ? getMarketPhase(yesterdayAvg)
-          : '';
+        setCorrelationData(correlationPoints);
 
         setSummary({
           totalVotes: todayVotes.length,
           todayPhase,
           yesterdayPhase,
-          trend: !yesterdayPhase
-            ? 'same'
-            : todayAvg > yesterdayAvg
-            ? 'up'
-            : todayAvg < yesterdayAvg
-            ? 'down'
-            : 'same',
+          trend: getTrend(todayPhase, yesterdayPhase),
         });
 
         setData(newData);
-        setYesterdayData(yesterdayNewData);
-
-        // Calculate correlation data
-        const correlationData = [
-          {
-            date: 'Yesterday',
-            sentiment: yesterdayAvg,
-            phase: getMarketPhase(yesterdayAvg),
-            totalVotes: yesterdayVotes.length,
-          },
-          {
-            date: 'Today',
-            sentiment: todayAvg,
-            phase: getMarketPhase(todayAvg),
-            totalVotes: todayVotes.length,
-          },
-        ];
-
-        setCorrelationData(correlationData);
       } catch (error) {
         console.error('Failed to fetch chart data:', error);
       }
@@ -304,45 +282,77 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
     fetchData();
   }, [isVoting]);
 
+  // Helper functions
+  function getMostVotedPhase(votes: Sentiment[]): string {
+    if (!votes.length) return '';
+
+    const phaseCounts = votes.reduce((acc: Record<string, number>, vote) => {
+      acc[vote.phase] = (acc[vote.phase] || 0) + 1;
+      return acc;
+    }, {});
+
+    return Object.entries(phaseCounts).sort((a, b) => b[1] - a[1])[0][0];
+  }
+
+  function getTrend(today: string, yesterday: string): 'up' | 'down' | 'same' {
+    if (!yesterday || !today) return 'same';
+    const todayIndex = orderedPhases.indexOf(today);
+    const yesterdayIndex = orderedPhases.indexOf(yesterday);
+
+    // Higher index means more optimistic in our ordered phases
+    return todayIndex > yesterdayIndex
+      ? 'up'
+      : todayIndex < yesterdayIndex
+      ? 'down'
+      : 'same';
+  }
+
   const getSentimentDescription = () => {
     if (!summary.todayPhase) return 'Waiting for first votes of the day...';
     if (!summary.yesterdayPhase)
       return (
         <>
-          Current overall sentiment:{' '}
+          Today&apos;s market sentiment:{' '}
           <span style={{ color: phaseColors[summary.todayPhase as Phase] }}>
             {summary.todayPhase}
           </span>
         </>
       );
 
-    // Better handling of same phase case
+    // Same phase case
     if (summary.todayPhase === summary.yesterdayPhase) {
       return (
         <>
-          Market sentiment remains steady in{' '}
+          The market continues to show{' '}
           <span style={{ color: phaseColors[summary.todayPhase as Phase] }}>
             {summary.todayPhase}
           </span>{' '}
-          phase
+          sentiment
         </>
       );
     }
 
-    // Movement case
+    // Movement case - now correctly determined
+    const direction =
+      summary.trend === 'up' ? 'more optimistic' : 'more pessimistic';
     return (
       <>
-        Market sentiment moved {summary.trend} to{' '}
-        <span style={{ color: phaseColors[summary.todayPhase as Phase] }}>
-          {summary.todayPhase}
-        </span>{' '}
-        from{' '}
+        Market sentiment has become {direction}, moving from{' '}
         <span style={{ color: phaseColors[summary.yesterdayPhase as Phase] }}>
           {summary.yesterdayPhase}
+        </span>{' '}
+        to{' '}
+        <span style={{ color: phaseColors[summary.todayPhase as Phase] }}>
+          {summary.todayPhase}
         </span>
       </>
     );
   };
+
+  // Add helper function to get phase position
+  function getPhasePosition(phase: string): number {
+    return orderedPhases.indexOf(phase);
+  }
 
   return (
     <div className="space-y-4 w-full">
@@ -499,9 +509,12 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
                 />
                 <YAxis
                   dataKey="sentiment"
-                  domain={[0, 100]}
-                  ticks={[10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 98, 100]}
-                  tickFormatter={(value) => getMarketPhase(value)}
+                  domain={[0, (orderedPhases.length - 1) * 10]}
+                  ticks={orderedPhases.map((_, i) => i * 10)}
+                  tickFormatter={(value) => {
+                    const phaseIndex = Math.floor(value / 10);
+                    return orderedPhases[phaseIndex] || '';
+                  }}
                   width={100}
                   orientation="right"
                   tick={{

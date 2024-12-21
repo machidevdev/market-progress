@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 export async function POST(request: Request) {
   try {
     const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
-    const { progress } = await request.json();
+    const { phase } = await request.json();
 
     const today = new Date();
     const startOfDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     const sentiment = await prisma.marketSentiment.create({
       data: {
-        progress,
+        phase,
         ip,
       },
     });

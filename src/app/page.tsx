@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { LineChart } from '@/components/LineChart';
 
 export default function Home() {
-  const [progress, setProgress] = useState(65);
+  const [, setProgress] = useState(65);
   const [averageSentiment, setAverageSentiment] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [, setHasVoted] = useState(false);
@@ -89,7 +89,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ progress }),
+        body: JSON.stringify({ phase: selectedPhase }),
       });
 
       const data = await response.json();
@@ -119,18 +119,18 @@ export default function Home() {
 
   const handlePhaseSelect = (phase: string) => {
     const phaseToProgress = {
-      Disbelief: 5,
-      Hope: 15,
-      Optimism: 25,
-      Belief: 35,
-      Euphoria: 45,
-      Complacency: 55,
-      Anxiety: 65,
-      Denial: 75,
-      Panic: 85,
-      Capitulation: 92,
-      Anger: 96,
-      Depression: 99,
+      Depression: 5,
+      Anger: 15,
+      Capitulation: 25,
+      Panic: 35,
+      Denial: 45,
+      Anxiety: 55,
+      Complacency: 65,
+      Euphoria: 75,
+      Belief: 82,
+      Optimism: 87,
+      Hope: 92,
+      Disbelief: 97,
     };
     setProgress(phaseToProgress[phase as keyof typeof phaseToProgress]);
     setSelectedPhase(phase);

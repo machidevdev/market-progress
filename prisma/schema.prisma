@@ -9,7 +9,7 @@ datasource db {
 
 model MarketSentiment {
   id        String   @id @default(cuid())
-  progress  Int
+  phase     String
   createdAt DateTime @default(now())
   ip        String?
   

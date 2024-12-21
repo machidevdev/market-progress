@@ -139,6 +139,15 @@ export default function Home() {
         !showResults && 'justify-center'
       }`}
     >
+      <a
+        href="https://twitter.com/machiuwuowo"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed top-4 right-4 text-sm text-gray-500 hover:text-gray-300 transition-colors"
+      >
+        Feedback
+      </a>
+
       <div className="w-full max-w-4xl flex flex-col items-center justify-center space-y-6 sm:space-y-8">
         <div className="space-y-4 w-full text-center">
           <h1 className="text-2xl font-bold dark:text-white">
@@ -154,36 +163,42 @@ export default function Home() {
         </div>
 
         {isLoading ? (
-          <div className="w-full h-[500px] flex items-center justify-center">
+          <div className="w-full h-[500px] flex items-center justify-center ">
             <div className="text-white text-lg">Loading chart...</div>
           </div>
         ) : !showResults ? (
           <div className="w-full space-y-6 flex justify-center flex-col">
-            <p className="text-center text-orange-500 font-medium">
-              Vote to unlock today&apos;s results and see where the market
-              stands
-            </p>
             <LineChart onVote={handlePhaseSelect} isVoting={true} />
-            {selectedPhase && (
-              <div className="flex flex-col items-center gap-4">
+            <div className="flex flex-col items-center gap-4 mt-4">
+              {selectedPhase ? (
                 <div className="bg-black/50 px-6 py-3 rounded-lg">
                   <p className="text-white text-lg">
                     Selected phase:{' '}
                     <span className="font-bold">{selectedPhase}</span>
                   </p>
                 </div>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="w-40 h-12 text-lg"
-                >
-                  {isSubmitting ? 'Submitting...' : 'Confirm Vote'}
-                </Button>
-              </div>
-            )}
+              ) : (
+                <p className="text-gray-400">
+                  Click on the chart to select a phase
+                </p>
+              )}
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting || !selectedPhase}
+                className={`w-40 h-12 text-lg ${
+                  !selectedPhase && 'opacity-50 cursor-not-allowed'
+                }`}
+              >
+                {isSubmitting
+                  ? 'Submitting...'
+                  : selectedPhase
+                  ? 'Confirm Vote'
+                  : 'Select a Phase'}
+              </Button>
+            </div>
           </div>
         ) : (
-          <div className="w-full">
+          <div className="w-full pt-10">
             <LineChart isVoting={false} />
             {averageSentiment > 0 && (
               <div className="space-y-2 max-w-xl mx-auto mt-4">
@@ -196,15 +211,6 @@ export default function Home() {
           </div>
         )}
       </div>
-
-      <a
-        href="https://twitter.com/machiuwuowo"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-4 text-sm text-gray-500 hover:text-gray-300 transition-colors"
-      >
-        Feedback
-      </a>
     </div>
   );
 }

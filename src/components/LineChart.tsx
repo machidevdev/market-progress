@@ -17,97 +17,147 @@ interface Sentiment {
   progress: number;
 }
 
+// For the left chart - keeps the original curve shape
 const marketCycleData = [
   {
     time: 0,
     price: 20,
-    phase: 'Disbelief',
-    text: 'This rally will fail like the others.',
+    phase: 'Disbelief-Start',
+    displayPhase: 'Disbelief',
+    text: 'This rally will fail.',
   },
-  { time: 10, price: 25, phase: 'Hope', text: 'A recovery is possible.' },
-  { time: 20, price: 35, phase: 'Optimism', text: 'This rally is real!' },
-  { time: 30, price: 45, phase: 'Belief', text: 'Time to get fully invested.' },
+  {
+    time: 10,
+    price: 25,
+    phase: 'Hope',
+    displayPhase: 'Hope',
+    text: 'A recovery is possible.',
+  },
+  {
+    time: 20,
+    price: 35,
+    phase: 'Optimism',
+    displayPhase: 'Optimism',
+    text: 'This rally is real!',
+  },
+  {
+    time: 30,
+    price: 45,
+    phase: 'Belief',
+    displayPhase: 'Belief',
+    text: 'Time to get invested.',
+  },
   {
     time: 40,
-    price: 80,
+    price: 90,
     phase: 'Euphoria',
-    text: "I'm a genius!\nWe're all going to be rich!",
+    displayPhase: 'Euphoria',
+    text: "We're all going to be rich!",
   },
   {
-    time: 50,
+    time: 42,
     price: 70,
+    phase: 'Euphoria-Wick',
+    displayPhase: '',
+    text: 'Buy the dip!',
+  },
+  {
+    time: 44,
+    price: 85,
+    phase: 'Euphoria-Recovery',
+    displayPhase: '',
+    text: 'Back to ATH!',
+  },
+  {
+    time: 45,
+    price: 65,
     phase: 'Complacency',
-    text: 'We just need to cool off\nfor the next rally.',
+    displayPhase: 'Complacency',
+    text: 'Just cooling off.',
   },
   {
     time: 60,
-    price: 55,
+    price: 45,
     phase: 'Anxiety',
-    text: 'Why am I getting margin calls?\nThis dip is taking longer than expected.',
+    displayPhase: 'Anxiety',
+    text: 'This dip is taking longer...',
   },
   {
     time: 70,
-    price: 40,
+    price: 30,
     phase: 'Denial',
-    text: 'My investments are with great companies.\nThey will come back.',
+    displayPhase: 'Denial',
+    text: 'They will come back.',
   },
   {
     time: 80,
-    price: 25,
+    price: 20,
     phase: 'Panic',
-    text: "Shit! Everyone's selling. I need to get out!",
+    displayPhase: 'Panic',
+    text: "Everyone's selling!",
   },
   {
     time: 90,
     price: 15,
     phase: 'Capitulation',
-    text: "I'm getting 100% out of the markets.\nI can't afford to lose more.",
+    displayPhase: 'Capitulation',
+    text: "I'm getting out!",
   },
   {
     time: 95,
     price: 10,
     phase: 'Anger',
-    text: 'Who shorted the market!?\nWhy did the government\nallow this to happen!?',
+    displayPhase: 'Anger',
+    text: 'Who shorted the market!?',
   },
   {
     time: 100,
-    price: 15,
+    price: 8,
     phase: 'Depression',
-    text: 'My retirement money is lost.\nHow can we pay for all this new stuff?\nI am an idiot.',
+    displayPhase: 'Depression',
+    text: 'My retirement money is lost.',
+  },
+  {
+    time: 105,
+    price: 25,
+    phase: 'Disbelief-End',
+    displayPhase: 'Disbelief',
+    text: "This is a sucker's rally.",
   },
 ];
 
+// For the right chart - ordered from bottom to top
+export function getMarketPhase(progress: number) {
+  if (progress < 10) return 'Depression';
+  if (progress < 20) return 'Anger';
+  if (progress < 30) return 'Capitulation';
+  if (progress < 40) return 'Panic';
+  if (progress < 50) return 'Denial';
+  if (progress < 60) return 'Anxiety';
+  if (progress < 70) return 'Complacency';
+  if (progress < 80) return 'Euphoria';
+  if (progress < 85) return 'Belief';
+  if (progress < 90) return 'Optimism';
+  if (progress < 95) return 'Hope';
+  return 'Disbelief';
+}
+
 // Add this after marketCycleData
 const phaseColors = {
-  Disbelief: '#3b82f6', // Blue
+  'Disbelief-Start': '#3b82f6',
+  'Disbelief-End': '#3b82f6',
   Hope: '#3b82f6',
   Optimism: '#3b82f6',
-  Belief: '#22c55e', // Green
+  Belief: '#22c55e',
   Euphoria: '#22c55e',
   Complacency: '#22c55e',
-  Anxiety: '#ef4444', // Red
+  Anxiety: '#ef4444',
   Denial: '#ef4444',
   Panic: '#ef4444',
   Capitulation: '#ef4444',
   Anger: '#ef4444',
   Depression: '#ef4444',
-};
-
-// Map progress value (0-100) to market phase
-export function getMarketPhase(progress: number) {
-  if (progress < 10) return 'Disbelief';
-  if (progress < 20) return 'Hope';
-  if (progress < 30) return 'Optimism';
-  if (progress < 40) return 'Belief';
-  if (progress < 50) return 'Euphoria';
-  if (progress < 60) return 'Complacency';
-  if (progress < 70) return 'Anxiety';
-  if (progress < 80) return 'Denial';
-  if (progress < 90) return 'Panic';
-  if (progress < 95) return 'Capitulation';
-  if (progress < 98) return 'Anger';
-  return 'Depression';
-}
+} as const;
 
 const chartConfig = {
   price: {
@@ -134,8 +184,19 @@ interface LineChartProps {
 // Add this type
 type Phase = keyof typeof phaseColors;
 
+// Add a new type for the correlation data
+interface CorrelationData {
+  date: string;
+  sentiment: number;
+  phase: string;
+  totalVotes: number;
+}
+
 export function LineChart({ onVote, isVoting = false }: LineChartProps) {
   const [data, setData] = React.useState(
+    marketCycleData.map((item) => ({ ...item, votes: 0 }))
+  );
+  const [, setYesterdayData] = React.useState(
     marketCycleData.map((item) => ({ ...item, votes: 0 }))
   );
   const [summary, setSummary] = React.useState({
@@ -144,6 +205,9 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
     yesterdayPhase: '',
     trend: '' as 'up' | 'down' | 'same',
   });
+  const [correlationData, setCorrelationData] = React.useState<
+    CorrelationData[]
+  >([]);
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -159,6 +223,19 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
         todayVotes.forEach((s: Sentiment) => {
           const phase = getMarketPhase(s.progress);
           const dataPoint = newData.find((d) => d.phase === phase);
+          if (dataPoint) {
+            dataPoint.votes = (dataPoint.votes || 0) + 1;
+          }
+        });
+
+        // Process yesterday's data
+        const yesterdayNewData = marketCycleData.map((item) => ({
+          ...item,
+          votes: 0,
+        }));
+        yesterdayVotes.forEach((s: Sentiment) => {
+          const phase = getMarketPhase(s.progress);
+          const dataPoint = yesterdayNewData.find((d) => d.phase === phase);
           if (dataPoint) {
             dataPoint.votes = (dataPoint.votes || 0) + 1;
           }
@@ -200,6 +277,25 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
         });
 
         setData(newData);
+        setYesterdayData(yesterdayNewData);
+
+        // Calculate correlation data
+        const correlationData = [
+          {
+            date: 'Yesterday',
+            sentiment: yesterdayAvg,
+            phase: getMarketPhase(yesterdayAvg),
+            totalVotes: yesterdayVotes.length,
+          },
+          {
+            date: 'Today',
+            sentiment: todayAvg,
+            phase: getMarketPhase(todayAvg),
+            totalVotes: todayVotes.length,
+          },
+        ];
+
+        setCorrelationData(correlationData);
       } catch (error) {
         console.error('Failed to fetch chart data:', error);
       }
@@ -220,13 +316,23 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
         </>
       );
 
-    // Always show the movement, even if it's the same phase
+    // Better handling of same phase case
+    if (summary.todayPhase === summary.yesterdayPhase) {
+      return (
+        <>
+          Market sentiment remains steady in{' '}
+          <span style={{ color: phaseColors[summary.todayPhase as Phase] }}>
+            {summary.todayPhase}
+          </span>{' '}
+          phase
+        </>
+      );
+    }
+
+    // Movement case
     return (
       <>
-        Market sentiment{' '}
-        {summary.trend === 'same'
-          ? 'stayed at'
-          : 'moved ' + summary.trend + ' to'}{' '}
+        Market sentiment moved {summary.trend} to{' '}
         <span style={{ color: phaseColors[summary.todayPhase as Phase] }}>
           {summary.todayPhase}
         </span>{' '}
@@ -241,9 +347,9 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
   return (
     <div className="space-y-4 w-full">
       {isVoting && (
-        <p className="hidden sm:block text-sm text-center text-orange-500 font-bold">
+        <p className="hidden sm:block  text-center text-orange-500 font-bold text-2xl">
           Click on the chart to select your market sentiment and vote to see the
-          collective sentiment.
+          results.
         </p>
       )}
       <div className="text-center space-y-2 px-4 sm:px-0">
@@ -253,23 +359,25 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
         <p className="text-xs text-muted-foreground dark:text-gray-400">
           Total votes today: {summary.totalVotes}
         </p>
-        <p className="text-sm font-medium text-muted-foreground dark:text-white">
-          {getSentimentDescription()}
-        </p>
+        {!isVoting && (
+          <p className="text-sm font-medium text-muted-foreground dark:text-white">
+            {getSentimentDescription()}
+          </p>
+        )}
       </div>
-      <div className="w-full sm:mx-0">
-        <div className="min-w-[320px]  sm:px-0">
-          <ChartContainer
-            config={chartConfig}
-            className="h-[300px] sm:h-[500px] w-full"
-          >
+      <div className="flex flex-col sm:flex-row gap-4 mt-12 sm:mt-20 pt-20">
+        <div className="w-full sm:w-1/2">
+          <p className="text-center text-sm text-gray-400 mb-4">
+            Vote Distribution by Phase
+          </p>
+          <ChartContainer config={chartConfig} className="h-[300px] w-full">
             <ComposedChart
               data={data}
               margin={{
-                top: 40,
+                top: 20,
                 right: 30,
                 left: 35,
-                bottom: 60,
+                bottom: 20,
               }}
               onClick={(data) => {
                 if (isVoting && onVote && data.activePayload) {
@@ -306,9 +414,11 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
                   if (active && payload && payload.length) {
                     const data = payload[0].payload;
                     return (
-                      <div className="bg-black/80 p-2 rounded-md text-xs">
-                        <p className="font-bold text-white">{data.phase}</p>
-                        <p className="text-gray-200 whitespace-pre-line">
+                      <div className="bg-black/80 p-3 rounded-md text-xs">
+                        <p className="font-bold text-white text-sm mb-1">
+                          {data.displayPhase}
+                        </p>
+                        <p className="text-gray-200 whitespace-pre-line mb-2">
                           {data.text}
                         </p>
                         {!isVoting && (
@@ -340,30 +450,16 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
                 strokeWidth={3}
                 cursor={isVoting ? 'pointer' : 'default'}
                 dot={(props) => {
-                  const { cx, cy, payload } = props;
-                  const width = payload.phase.length > 8 ? 80 : 70;
+                  const { cx, cy } = props;
                   return (
-                    <g className="hidden sm:block">
-                      <rect
-                        x={cx - width / 2}
-                        y={cy - 25}
-                        width={width}
-                        height={20}
-                        fill="rgba(0,0,0,0.75)"
-                        rx={4}
-                      />
-                      <text
-                        x={cx}
-                        y={cy - 12}
-                        textAnchor="middle"
-                        fill="white"
-                        fontSize="11"
-                        fontWeight="bold"
-                        className="select-none"
-                      >
-                        {payload.phase}
-                      </text>
-                    </g>
+                    <circle
+                      cx={cx}
+                      cy={cy}
+                      r={4}
+                      fill="white"
+                      stroke="url(#colorGradient)"
+                      strokeWidth={2}
+                    />
                   );
                 }}
               />
@@ -378,6 +474,75 @@ export function LineChart({ onVote, isVoting = false }: LineChartProps) {
             </ComposedChart>
           </ChartContainer>
         </div>
+
+        {!isVoting && (
+          <div className="w-full sm:w-1/2">
+            <p className="text-center text-sm text-gray-400 mb-4">
+              Market Psychology Trend
+            </p>
+            <ChartContainer config={chartConfig} className="h-[300px] w-full">
+              <ComposedChart
+                data={correlationData}
+                margin={{
+                  top: 20,
+                  right: 30,
+                  left: 100,
+                  bottom: 20,
+                }}
+              >
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10, fill: 'white' }}
+                  interval={0}
+                  padding={{ left: 50, right: 50 }}
+                  width={100}
+                />
+                <YAxis
+                  dataKey="sentiment"
+                  domain={[0, 100]}
+                  ticks={[10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 98, 100]}
+                  tickFormatter={(value) => getMarketPhase(value)}
+                  width={100}
+                  orientation="right"
+                  tick={{
+                    fontSize: 8,
+                    fill: 'white',
+                  }}
+                />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-black/80 p-2 rounded-md text-xs">
+                          <p className="font-bold text-white">{data.date}</p>
+                          <p className="text-gray-200">Phase: {data.phase}</p>
+                          <p className="text-gray-200">
+                            Votes: {data.totalVotes}
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="sentiment"
+                  stroke="url(#colorGradient)"
+                  strokeWidth={2}
+                  connectNulls={true}
+                  dot={{
+                    fill: 'white',
+                    strokeWidth: 2,
+                    r: 4,
+                    stroke: 'url(#colorGradient)',
+                  }}
+                />
+              </ComposedChart>
+            </ChartContainer>
+          </div>
+        )}
       </div>
     </div>
   );
